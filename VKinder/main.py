@@ -60,8 +60,9 @@ while True:
 
                 # кто к нам обращается ---
                 # TODO Sergey: чекнуть ли все ок с строкой ниже
-                user_data = get_user_data_from_db(event.user_id)
-                if not user_data: # if data not existed then
+                #user_data = get_user_data_from_db(event.user_id)
+                #if not user_data: # if data not existed then
+                if True:  # временное решение пока Сергей не проверит
                     user_data = vk.get_user_data(vk_client, event.user_id)
                     # TODO Sergey: чекнуть ли все ок с строкой ниже
                     #add_new_user_to_db(user_data)
