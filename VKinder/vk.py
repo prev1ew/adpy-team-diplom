@@ -66,6 +66,7 @@ def select_age(age, gender):
 def search_people(vk, info):
     age_from_to = select_age(info['age'], info['gender'])
     res = vk.method('users.search', {
+        # TODO: сделать правки после определения структуры бд
         'city': info['city']['id'],
         # 2 = mens, 1 = women
         'sex': 1 if info['gender'] == 'M' else 2,
