@@ -71,9 +71,10 @@ while True:
 
                     # если был получен ранее нормальный токен
                     if user_data['user_token']:
-                        # TODO: переделать
                         vk_personal = vk_client = vk.initialize_vk_client(user_data['user_token'])
                         result = vk.search_people(vk_personal, user_data)
+                        # вот мы нашли людей, в теории тут нужно что-то с ими делать (пока не придумал)
+                        # TODO: доработать механизм
                         current_user = result['items'][1]
                         # !метод работает только с персональным токеном
                         message = vk.make_message_about_another_user(current_user)
@@ -85,7 +86,6 @@ while True:
                         vk_client = vk.initialize_vk_client()
                         # TODO: прикрепить кнопки (в тек момент там только 1 кнопка и то не та что нужно)
                         # TODO: доработать "отклик" при нажатии на кнопки
-                        # TMP ---
                         vk.write_msg(vk_client, event.user_id, message,
                                      {
                                          'attachment': str_attachments,
@@ -93,7 +93,6 @@ while True:
                                      })
                         # сейчас вывожу просто первого юзера чисто разработать механизм
                         # TODO: придумать алгоритм вывода "кандидатов"
-                        # --- TMP
                     else:
                         show_authorization_message(vk_client, event.user_id)
 
