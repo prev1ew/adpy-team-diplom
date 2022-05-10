@@ -2,14 +2,20 @@ import psycopg2
 from psycopg2 import Error
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
+
+def check_db():
+    con = connect_to_db()
+
+
 def connect_to_db():
     hostname = 'localhost'
     database = 'postgres'
     username = 'postgres'
-    pwd = '***'
+    pwd = '123456'
     port_id = 5432
     connection = psycopg2.connect(host=hostname, dbname=database, user=username, password=pwd, port=port_id)
     return connection
+
 
 def execute_sql(sql_script: str, returnResults: bool):
     connection = connect_to_db()
@@ -26,20 +32,31 @@ def execute_sql(sql_script: str, returnResults: bool):
             cursor.close()
             connection.close()
 
+
 def add_new_user_to_db(user_info: dict):
+    # поменял user_id на id
+    # добавил из сити выбирать id
+    # потому что иначе ошибка
     insert_script = f'''INSERT INTO users VALUES(
-    '{user_info["user_id"]}',
+    '{user_info["id"]}',
     '{user_info["user_token"]}',
     {user_info["age"]},
     '{user_info["gender"]}',
-    '{user_info["city"]}'
+    '{user_info["city"]['id']}'
     )'''
     execute_sql(insert_script, False)
 
+
 def get_user_data_from_db(user_id: str):
     select_script = f"SELECT * FROM users WHERE user_id = '{user_id}'"
-    res = execute_sql(select_script, True)[0]
-    return {'user_id': res[0], 'user_token': res[1], 'age': res[2], 'gender': res[3], 'city': res[4]}
+    total_res = execute_sql(select_script, True)
+    # total_res = None in some cases
+    if total_res:
+        res = total_res[0]
+        return {'user_id': res[0], 'user_token': res[1], 'age': res[2], 'gender': res[3], 'city': res[4]}
+    else:
+        return None
+
 
 def add_to_favorites(user_id: str, partner_data: dict):
     insert_script_favorites = f'''INSERT INTO favorites VALUES(
@@ -60,6 +77,7 @@ def add_to_favorites(user_id: str, partner_data: dict):
     )'''
     execute_sql(insert_script_partners, False)
 
+
 def display_favorites(user_id: str):
     sql_script = f'''SELECT partners.partner_id, first_name, last_name, age, gender, city
     FROM partners
@@ -67,3 +85,8 @@ def display_favorites(user_id: str):
     WHERE favorites.user_id = '{user_id}'
     '''
     return execute_sql(sql_script, True)
+
+
+def update_user_token(user_id, new_token):
+    # TODO Sergey: нужна функция записи токена в существующего юзера
+    pass

@@ -2,24 +2,20 @@ import time
 import vk
 import listener
 from threading import Thread
+import db as db_connection
+import create_db
 
-# инициалиция
+APP_ID = '8158966'
+
+# инициализация
 # возможно следует переделать вк в класс
+
+# чекаем бд, если пустая бд - создаем пустые таблицы
+create_db.recreate_db_if_needed()
+
 vk_client = vk.initialize_vk_client()
 longpoll = vk.get_longpoll_from_vk(vk_client)
 
-# порты заблокированы, проверить не могу поэтому сделаю обычным вводом
-# # это нужно, для того чтобы указывать в редирект адрес нужный адрес на котором у нас запущен сервис
-# COMPUTER_IP = vk.get_ip()
-# PORT = '8008'
-#
-# # запускаем сервер с целью возможности получения токена от пользователя (без его непосредственного участия)
-# # TO/DO: доработать механизм обработки токена
-# th = Thread(target=listener.run_listener)
-# th.start()
-
-
-APP_ID = '8158966'
 
 access_token = ''
 user_data = ''
@@ -29,23 +25,15 @@ tmp_token = ''
 # ---
 #
 
-# cтандартные кнопки для сообщения
+# стандартные кнопки для сообщения
 kb_candidate_commands = vk.create_basic_keyboard()
 
 help_message = 'Напишите команду "ищи людей" для начала поиска "кандидатов"'
 
 
-def token_existed(user_data):
-    # TODO Sergey: сделать проверку (вероятнее всего тут нужно обращаться в бд,
-    # или же чекать из юзер инфо
-
-    # return bool(user_data['user_token'])
-    return bool(tmp_token)
-
-
-def show_authorization_message(vk_cl, user_id):
+def show_authorization_message(vk_cl, user_id, start_message=False):
     vk.write_msg(vk_cl, user_id,
-                 f"Для использования бота нужно пройти аутентификацию, ее можно пройти тут:\n"
+                 f"{'Привет, д' if start_message else 'Д'}ля использования бота нужно пройти аутентификацию, ее можно пройти тут:\n"
                  f"https://oauth.vk.com/authorize?client_id={APP_ID}&display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=groups,offline&response_type=token&v=5.52\n"
                  f"После получения токена отправь его мне (лучше полную ссылку в браузерной строке)"
                  )
@@ -59,43 +47,36 @@ while True:
             if event.to_me:
 
                 # кто к нам обращается ---
-                # TODO Sergey: чекнуть ли все ок с строкой ниже
-                #user_data = get_user_data_from_db(event.user_id)
-                #if not user_data: # if data not existed then
-                if True:  # временное решение пока Сергей не проверит
+                # TODO: каждый раз обращаться в бд не есть разумным, нужно подумать об альтернативе
+                # TODO Sergey: вроде бы поправил все, но все же чекни ли все ок с строкой ниже
+                user_data = db_connection.get_user_data_from_db(event.user_id)
+                if not user_data:  # if data not existed then
                     user_data = vk.get_user_data(vk_client, event.user_id)
-                    # TODO Sergey: чекнуть ли все ок с строкой ниже
-                    #add_new_user_to_db(user_data)
-                    # функция не импортируется ниоткуда
+                    db_connection.add_new_user_to_db(user_data)
                 # --- кто к нам обращается
 
                 request = event.text.lower()
-                has_access_token = request.find('access_token')
+                entered_access_token = request.find('access_token')
                 # TODO: прикрутить кнопки
 
                 if request == "start":
-                    # TODO Sergey: тут в теории должна быть проверка на токен
                     # event.user_id = ид юзера (вк), его можно использовать для поиска
                     # т.е. если пользователь без токена пишет "старт"
-                    if token_existed(event.user_id):
+                    if user_data['user_token']:
                         vk.write_msg(vk_client, event.user_id, help_message)
                     else:
-                        vk.write_msg(vk_client, event.user_id,
-                                     f"Привет, для использования бота нужно пройти аутентификацию, ее можно пройти тут:\n"
-                                     f"https://oauth.vk.com/authorize?client_id={APP_ID}&display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=groups,offline&response_type=token&v=5.52\n"
-                                     f"После получения токена отправь его мне (лучше полную ссылку в браузерной строке)")
+                        show_authorization_message(vk_client, event.user_id, True)
 
                 elif request == "ищи людей":
-                    # TODO Sergey: проверить ли есть токен в бд
-                    # TODO Sergey: получить токен (или запросить авторизоваться)
 
                     # если был получен ранее нормальный токен
-                    if token_existed(user_data):
-                        vk_personal = vk_client = vk.initialize_vk_client(tmp_token)
+                    if user_data['user_token']:
+                        # TODO: переделать
+                        vk_personal = vk_client = vk.initialize_vk_client(user_data['user_token'])
                         result = vk.search_people(vk_personal, user_data)
                         current_user = result['items'][1]
                         # !метод работает только с персональным токеном
-                        message = vk.make_message_about_another_user(current_user, vk_client, event.user_id)
+                        message = vk.make_message_about_another_user(current_user)
                         str_attachments = vk.find_photos(current_user['id'], vk_personal)
                         # тут короче фигня какая-то
                         # после получения vk_personal vk_client ломается
@@ -103,6 +84,8 @@ while True:
                         # TODO: найти альтернативу строчке ниже
                         vk_client = vk.initialize_vk_client()
                         # TODO: прикрепить кнопки (в тек момент там только 1 кнопка и то не та что нужно)
+                        # TODO: доработать "отклик" при нажатии на кнопки
+                        # TMP ---
                         vk.write_msg(vk_client, event.user_id, message,
                                      {
                                          'attachment': str_attachments,
@@ -110,26 +93,29 @@ while True:
                                      })
                         # сейчас вывожу просто первого юзера чисто разработать механизм
                         # TODO: придумать алгоритм вывода "кандидатов"
+                        # --- TMP
                     else:
                         show_authorization_message(vk_client, event.user_id)
 
-                elif has_access_token:
-                    start = has_access_token + len('access_token=')
-                    end = request.find('&', has_access_token)
+                elif entered_access_token >= 0:  # -1 если не найден "аксес_токен"
+                    # entered_access_token = позиция начала "аксес_токен"
+                    start = entered_access_token + len('access_token=')
+                    end = request.find('&', entered_access_token)
                     if 82 < len(access_token) < 87:
                         access_token = request[start:(end if end else 0)]
-                    else:
-                        vk.write_msg(vk_client, event.user_id, help_message)
+                        db_connection.update_user_token(event.user_id, access_token)
+                        vk.write_msg(vk_client, event.user_id, "Токен успешно сохранён!")
+                    # else:
+                    #     vk.write_msg(vk_client, event.user_id, help_message)
                 elif 82 < len(request) < 87:
                     # вероятнее всего человек написал только токен
                     # у моего токена была длина 85, я хз он меняется там или нет, поэтому взял с зазором
                     access_token = request
+                    db_connection.update_user_token(event.user_id, access_token)
+                    vk.write_msg(vk_client, event.user_id, "Токен успешно сохранён!")
+                # удалить при готовности
+                elif request == 'restart':
+                    pass
+                # --- удалить
                 else:
                     vk.write_msg(vk_client, event.user_id, help_message)
-
-                if access_token and user_data:
-                    # TODO Sergey: записать токен в бд
-                    tmp_token = access_token
-                    vk.write_msg(vk_client, event.user_id, "Токен успешно сохранён!")
-                    access_token = ''
-                    # возможно стоит проверить токен на "работоспособность"

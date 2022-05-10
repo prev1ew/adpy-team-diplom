@@ -1,27 +1,9 @@
 from datetime import date
 from random import randrange
-import time
-import requests
-from flask import Flask, request
 import vk_api
 from vk_api.keyboard import VkKeyboardColor, VkKeyboard
 from vk_api.longpoll import VkLongPoll, VkEventType
 import socket
-from threading import Thread
-import listener
-
-
-def get_ip():
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        # doesn't even have to be reachable
-        s.connect(('10.255.255.255', 1))
-        ip = s.getsockname()[0]
-    except Exception:
-        ip = '127.0.0.1'
-    finally:
-        s.close()
-    return ip
 
 
 def initialize_vk_client(token=''):
@@ -35,7 +17,7 @@ def get_longpoll_from_vk(vk):
     return VkLongPoll(vk)
 
 
-def write_msg(vk, user_id, message, additional_parameters=''):
+def write_msg(vk, user_id, message, additional_parameters=None):
     main_headers = {
         'user_id': user_id,
         'message': message,
@@ -59,10 +41,12 @@ def get_user_data(vk, user_id):
     res = vk.method('users.get', {'user_ids': user_id, 'fields': 'bdate, city, sex'})
     info = dict()
     info['gender'] = 'M' if res[0]['sex'] == 2 else 'W'
+    # сити - словарь состоящий из id и title
     info['city'] = res[0]['city']
     info['age'] = calc_user_age(res[0]['bdate'])
     info['id'] = user_id
-    # прикрутить статус (в поиске или че там)
+    info['user_token'] = ''
+    # прикрутить статус (в поиске или что там)
     # хотя в задаче нечего не говорится про статус, поэтому оставляю на будущее
     return info
 
@@ -101,7 +85,7 @@ def change_token(vk, new_token):
     vk = vk_api.VkApi(token=new_token)
 
 
-def make_message_about_another_user(user_to_show, vk_client, id_of_current_user):
+def make_message_about_another_user(user_to_show):
     return f"{user_to_show['first_name']} {user_to_show['last_name']}\n" \
            f"https://vk.com/id{user_to_show['id']}"
 
