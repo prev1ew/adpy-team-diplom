@@ -38,6 +38,8 @@ help_message = 'Напишите команду "ищи людей" для на�
 def token_existed(user_data):
     # TODO Sergey: сделать проверку (вероятнее всего тут нужно обращаться в бд,
     # или же чекать из юзер инфо
+
+    # return bool(user_data['user_token'])
     return bool(tmp_token)
 
 
@@ -57,16 +59,13 @@ while True:
             if event.to_me:
 
                 # кто к нам обращается ---
-                # TODO Sergey: чекнуть ли есть данные по этому юзеру
-                user_data_existed = False
-                if user_data_existed:
-                    # TODO Sergey: если существует - присваиваем данные user_data
-                    # user data = db.get_user_info(event.user_id) (example)
-                    pass
-                else:
-                    # тут получаю первоначальную инфу БЕЗ ТОКЕНА
+                # TODO Sergey: чекнуть ли все ок с строкой ниже
+                user_data = get_user_data_from_db(event.user_id)
+                if not user_data: # if data not existed then
                     user_data = vk.get_user_data(vk_client, event.user_id)
-                    # TODO Sergey: записать данные в бд
+                    # TODO Sergey: чекнуть ли все ок с строкой ниже
+                    #add_new_user_to_db(user_data)
+                    # функция не импортируется ниоткуда
                 # --- кто к нам обращается
 
                 request = event.text.lower()
