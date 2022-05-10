@@ -3,7 +3,6 @@ from random import randrange
 import vk_api
 from vk_api.keyboard import VkKeyboardColor, VkKeyboard
 from vk_api.longpoll import VkLongPoll, VkEventType
-import socket
 
 
 def initialize_vk_client(token=''):

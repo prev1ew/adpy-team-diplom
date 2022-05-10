@@ -1,7 +1,5 @@
 import time
 import vk
-import listener
-from threading import Thread
 import db as db_connection
 import create_db
 

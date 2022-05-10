@@ -3,10 +3,6 @@ from psycopg2 import Error
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 
 
-def check_db():
-    con = connect_to_db()
-
-
 def connect_to_db():
     hostname = 'localhost'
     database = 'postgres'
