@@ -4,6 +4,7 @@ import vk_api
 from vk_api.bot_longpoll import VkBotEventType
 from vk_api.keyboard import VkKeyboardColor, VkKeyboard
 from vk_api.longpoll import VkLongPoll, VkEventType
+from operator import itemgetter
 
 
 def initialize_vk_client(token=''):
@@ -94,13 +95,18 @@ def make_message_about_another_user(user_to_show):
            f"https://vk.com/id{user_to_show['id']}"
 
 
+def sort_by_likes(items):
+    return sorted(items, key=lambda k: k['likes']['count'], reverse=True)
+
+
 def find_photos(user_id, vk_client):
     try:
+        # TODO: добавить сортировку фоток по лайкам
         photos = vk_client.method('photos.get', {'owner_id': user_id, 'extended': '1', 'album_id': 'profile'})
         max_count = 3
         curr_photo_num = 0
         returning_value = ''
-        for photo in photos['items']:
+        for photo in sort_by_likes(photos['items']):
             curr_photo_num += 1
             if curr_photo_num > max_count:
                 break
@@ -156,6 +162,7 @@ def cache_values(func):
 
 @cache_values
 def get_candidate(vk_client, user_data, user_id, candidate_info):
+    # логика подбора кандидатов находится в декораторе
     vk_personal = initialize_vk_client(user_data['user_token'])
 
     # current_candidate = get_next_candidates_info(vk_personal, user_data)

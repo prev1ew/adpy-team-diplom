@@ -75,6 +75,7 @@ while True:
                     end = request.find('&', entered_access_token)
                     access_token = request[start:(end if end else 0)]
                     if 82 < len(access_token) < 87:
+                        # тут было бы хорошо проверить токен на корректность перед записью
                         db_connection.update_user_token(event.user_id, access_token)
                         vk.write_msg(vk_client, event.user_id, "Токен успешно сохранён!")
                     # else:
@@ -83,6 +84,7 @@ while True:
                     # вероятнее всего человек написал только токен
                     # у моего токена была длина 85, я хз он меняется там или нет, поэтому взял с зазором
                     access_token = request
+                    # тут было бы хорошо проверить токен на корректность перед записью
                     db_connection.update_user_token(event.user_id, access_token)
                     vk.write_msg(vk_client, event.user_id, "Токен успешно сохранён!")
                 # удалить при готовности
@@ -93,7 +95,7 @@ while True:
                     vk.write_msg(vk_client, event.user_id, help_message)
 
         # callback не доходит
-        # точка остановки не срабатывает при нажатии на кнопку
+        # точка остановки не срабатывает при нажатии на кнопку (вообще)
         #
         # elif vk.is_event_equal_message_event(event.type):
         #     print('hey, I received a callback!')
