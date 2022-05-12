@@ -49,7 +49,7 @@ def get_user_data_from_db(user_id: str):
     # total_res = None in some cases
     if total_res:
         res = total_res[0]
-        return {'user_id': res[0], 'user_token': res[1], 'age': res[2], 'gender': res[3], 'city': res[4]}
+        return {'id': res[0], 'user_token': res[1], 'age': res[2], 'gender': res[3], 'city': res[4]}
     else:
         return None
 
@@ -84,5 +84,8 @@ def display_favorites(user_id: str):
 
 
 def update_user_token(user_id, new_token):
-    # TODO Sergey: нужна функция записи токена в существующего юзера
-    pass
+    sql_script = f'''UPDATE users
+        SET user_token = '{new_token}'
+        WHERE user_id = '{user_id}'
+        '''
+    execute_sql(sql_script)

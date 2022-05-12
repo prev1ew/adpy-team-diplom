@@ -12,6 +12,7 @@ APP_ID = '8158966'
 create_db.recreate_db_if_needed()
 
 vk_client = vk.initialize_vk_client()
+# vk_api = vk_client.get_api()
 longpoll = vk.get_longpoll_from_vk(vk_client)
 
 
@@ -38,15 +39,12 @@ def show_authorization_message(vk_cl, user_id, start_message=False):
 
 
 while True:
-    time.sleep(5)
 
     for event in longpoll.listen():
         if vk.is_event_equal_new_message(event.type):
             if event.to_me:
 
                 # кто к нам обращается ---
-                # TODO: каждый раз обращаться в бд не есть разумным, нужно подумать об альтернативе
-                # TODO Sergey: вроде бы поправил все, но все же чекни ли все ок с строкой ниже
                 user_data = db_connection.get_user_data_from_db(event.user_id)
                 if not user_data:  # if data not existed then
                     user_data = vk.get_user_data(vk_client, event.user_id)
@@ -55,7 +53,6 @@ while True:
 
                 request = event.text.lower()
                 entered_access_token = request.find('access_token')
-                # TODO: прикрутить кнопки
 
                 if request == "start":
                     # event.user_id = ид юзера (вк), его можно использовать для поиска
@@ -69,28 +66,7 @@ while True:
 
                     # если был получен ранее нормальный токен
                     if user_data['user_token']:
-                        vk_personal = vk_client = vk.initialize_vk_client(user_data['user_token'])
-                        result = vk.search_people(vk_personal, user_data)
-                        # вот мы нашли людей, в теории тут нужно что-то с ими делать (пока не придумал)
-                        # TODO: доработать механизм
-                        current_user = result['items'][1]
-                        # !метод работает только с персональным токеном
-                        message = vk.make_message_about_another_user(current_user)
-                        str_attachments = vk.find_photos(current_user['id'], vk_personal)
-                        # тут короче фигня какая-то
-                        # после получения vk_personal vk_client ломается
-                        # поэтому я его тут повторно инициализирую
-                        # TODO: найти альтернативу строчке ниже
-                        vk_client = vk.initialize_vk_client()
-                        # TODO: прикрепить кнопки (в тек момент там только 1 кнопка и то не та что нужно)
-                        # TODO: доработать "отклик" при нажатии на кнопки
-                        vk.write_msg(vk_client, event.user_id, message,
-                                     {
-                                         'attachment': str_attachments,
-                                         'keyboard': kb_candidate_commands.get_keyboard()
-                                     })
-                        # сейчас вывожу просто первого юзера чисто разработать механизм
-                        # TODO: придумать алгоритм вывода "кандидатов"
+                        vk.get_candidate(vk_client, user_data, event.user_id)
                     else:
                         show_authorization_message(vk_client, event.user_id)
 
@@ -98,8 +74,8 @@ while True:
                     # entered_access_token = позиция начала "аксес_токен"
                     start = entered_access_token + len('access_token=')
                     end = request.find('&', entered_access_token)
+                    access_token = request[start:(end if end else 0)]
                     if 82 < len(access_token) < 87:
-                        access_token = request[start:(end if end else 0)]
                         db_connection.update_user_token(event.user_id, access_token)
                         vk.write_msg(vk_client, event.user_id, "Токен успешно сохранён!")
                     # else:
@@ -116,3 +92,16 @@ while True:
                 # --- удалить
                 else:
                     vk.write_msg(vk_client, event.user_id, help_message)
+
+        # callback не доходит
+        # точка остановки не срабатывает при нажатии на кнопку
+        #
+        # elif vk.is_event_equal_message_event(event.type):
+        #     print('hey, I received a callback!')
+        #     type_of_event = event.object.payload.get('type')
+        #     if type_of_event == 'next':
+        #         last_id = vk_api.messages.edit(
+        #             peer_id=event.obj.peer_id,
+        #             message='test',
+        #             conversation_message_id=event.obj.conversation_message_id,
+        #             keyboard=kb_candidate_commands)

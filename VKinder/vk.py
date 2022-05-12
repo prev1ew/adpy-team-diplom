@@ -1,6 +1,8 @@
 from datetime import date
+from multiprocessing.dummy import dict
 from random import randrange
 import vk_api
+from vk_api.bot_longpoll import VkBotEventType
 from vk_api.keyboard import VkKeyboardColor, VkKeyboard
 from vk_api.longpoll import VkLongPoll, VkEventType
 
@@ -41,7 +43,7 @@ def get_user_data(vk, user_id):
     info = dict()
     info['gender'] = 'M' if res[0]['sex'] == 2 else 'W'
     # сити - словарь состоящий из id и title
-    info['city'] = res[0]['city']
+    info['city'] = res[0]['city']['id']
     info['age'] = calc_user_age(res[0]['bdate'])
     info['id'] = user_id
     info['user_token'] = ''
@@ -65,13 +67,12 @@ def select_age(age, gender):
 def search_people(vk, info):
     age_from_to = select_age(info['age'], info['gender'])
     res = vk.method('users.search', {
-        # TODO: сделать правки после определения структуры бд
-        'city': info['city']['id'],
+        'city': info['city'],
         # 2 = mens, 1 = women
         'sex': 1 if info['gender'] == 'M' else 2,
         'age_from': age_from_to[0],
         'age_to': age_from_to[1],
-        # прикрутить статус (в поиске или че там)
+        # прикрутить статус (в поиске или что там)
         # хотя в задаче нечего не говорится про статус, поэтому оставляю на будущее
     })
     return res
@@ -79,6 +80,10 @@ def search_people(vk, info):
 
 def is_event_equal_new_message(event_type):
     return event_type == VkEventType.MESSAGE_NEW
+
+
+def is_event_equal_message_event(event_type):
+    return event_type == VkBotEventType.MESSAGE_EVENT
 
 
 def change_token(vk, new_token):
@@ -102,14 +107,72 @@ def find_photos(user_id, vk_client):
                 break
             returning_value += f'photo{photo["owner_id"]}_{photo["id"]},'
     except Exception as ex:
-        return f"<can't get photos, error: {ex}>"
+        # сюда в основном попадаем когда профиль приватный
+        return None
 
     return returning_value
 
 
 def create_basic_keyboard():
-    settings = dict(one_time=True, inline=False)
+    settings = dict(one_time=True, inline=False, )
     keyboard = VkKeyboard(**settings)
-    keyboard.add_callback_button(label='TEST',
-                                 color=VkKeyboardColor.PRIMARY, payload={"type": "my_own_100500_type_edit"})
+    keyboard.add_callback_button(label='Следующий',
+                                 color=VkKeyboardColor.PRIMARY, payload={"type": "next"})
+    keyboard.add_line()
+    keyboard.add_callback_button(label='В избранное',
+                                 color=VkKeyboardColor.POSITIVE, payload={"type": "add_to_favorite"})
+    keyboard.add_callback_button(label='Список избранного',
+                                 color=VkKeyboardColor.SECONDARY, payload={"type": "show_favorite"})
+    keyboard.add_line()
+    keyboard.add_callback_button(label='Выход',
+                                 color=VkKeyboardColor.NEGATIVE, payload={"type": "exit"})
     return keyboard
+
+
+def cache_values(func):
+    cached_data = dict()
+    # словарь со списками
+
+    def new_func(vk_client, user_data, user_id, pointer=0):
+
+        records = cached_data.get(user_id)
+        if records:
+            pointer = records[0]
+            res = func(vk_client, user_data, user_id, records[1][pointer])
+
+        else:
+            pointer = 0
+            vk_personal = initialize_vk_client(user_data['user_token'])
+            candidate_list = search_people(vk_personal, user_data)['items']
+
+            res = func(vk_client, user_data, user_id, candidate_list[pointer])
+            cached_data[user_id] = [0, candidate_list]
+
+        cached_data[user_id][0] = pointer + 1
+
+        return res
+
+    return new_func
+
+
+@cache_values
+def get_candidate(vk_client, user_data, user_id, candidate_info):
+    vk_personal = initialize_vk_client(user_data['user_token'])
+
+    # current_candidate = get_next_candidates_info(vk_personal, user_data)
+
+    message = make_message_about_another_user(candidate_info)
+    str_attachments = find_photos(candidate_info['id'], vk_personal)
+
+    # после получения vk_personal vk_client ломается
+    # поэтому я его тут повторно инициализирую
+    # TODO: найти альтернативу строчке ниже
+    vk_client = initialize_vk_client()
+
+    # TODO: callback не работает, чекнуть что не так и поправить
+    write_msg(vk_client, user_id, message + ("\n <private profile, can't get photos>" if not str_attachments else ''),
+              {
+                  'attachment': str_attachments,
+                  # клаву убрал так как нет смысла
+                  # 'keyboard': kb_candidate_commands.get_keyboard()
+              } if str_attachments else None)
