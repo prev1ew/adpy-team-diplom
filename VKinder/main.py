@@ -4,7 +4,7 @@ import db as db_connection
 import create_db
 
 APP_ID = '8158966'
-
+cache_file = dict()
 # инициализация
 # возможно следует переделать вк в класс
 
@@ -14,7 +14,6 @@ create_db.recreate_db_if_needed()
 vk_client = vk.initialize_vk_client()
 # vk_api = vk_client.get_api()
 longpoll = vk.get_longpoll_from_vk(vk_client)
-
 
 access_token = ''
 user_data = ''
@@ -30,12 +29,23 @@ kb_candidate_commands = vk.create_basic_keyboard()
 help_message = 'Напишите команду "ищи людей" для начала поиска "кандидатов"'
 
 
+def get_cache_file():
+    return cache_file
+
+
 def show_authorization_message(vk_cl, user_id, start_message=False):
     vk.write_msg(vk_cl, user_id,
                  f"{'Привет, д' if start_message else 'Д'}ля использования бота нужно пройти аутентификацию, ее можно пройти тут:\n"
                  f"https://oauth.vk.com/authorize?client_id={APP_ID}&display=page&redirect_uri=https://oauth.vk.com/blank.html&scope=groups,offline&response_type=token&v=5.52\n"
                  f"После получения токена отправь его мне (лучше полную ссылку в браузерной строке)"
                  )
+
+
+def make_msg_favorites(item_list):
+    returning_value = ''
+    for item in item_list:
+        returning_value += vk.make_message_about_another_user(item) + '\n'
+    return returning_value
 
 
 while True:
@@ -68,7 +78,11 @@ while True:
                         vk.get_candidate(vk_client, user_data, event.user_id)
                     else:
                         show_authorization_message(vk_client, event.user_id)
-
+                elif request == "избранное":
+                    vk.write_msg(vk_client, event.user_id,
+                                 make_msg_favorites(
+                                     db_connection.display_favorites(event.user_id))
+                                 )
                 elif entered_access_token >= 0:  # -1 если не найден "аксес_токен"
                     # entered_access_token = позиция начала "аксес_токен"
                     start = entered_access_token + len('access_token=')
@@ -91,6 +105,16 @@ while True:
                 elif request == 'restart':
                     pass
                 # --- удалить
+                elif request[:5] == 'в изб':
+                    current_user = vk.get_current(vk_client, user_data, event.user_id)
+                    if current_user:
+                        if db_connection.check_if_exist_in_favorite(event.user_id, current_user['id']):
+                            vk.write_msg(vk_client, event.user_id, "Пользователь уже существует в бд!")
+                        else:
+                            db_connection.add_to_favorites(event.user_id, current_user)
+                            vk.write_msg(vk_client, event.user_id, "Пользователь успешно сохранён в избранное!")
+                    else:
+                        vk.write_msg(vk_client, event.user_id, help_message)
                 else:
                     vk.write_msg(vk_client, event.user_id, help_message)
 

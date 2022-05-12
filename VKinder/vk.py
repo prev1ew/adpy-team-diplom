@@ -4,7 +4,10 @@ import vk_api
 from vk_api.bot_longpoll import VkBotEventType
 from vk_api.keyboard import VkKeyboardColor, VkKeyboard
 from vk_api.longpoll import VkLongPoll, VkEventType
-from operator import itemgetter
+import db as db_connection
+
+
+cache_file = dict()
 
 
 def initialize_vk_client(token=''):
@@ -72,6 +75,7 @@ def search_people(vk, info):
         'sex': 1 if info['gender'] == 'M' else 2,
         'age_from': age_from_to[0],
         'age_to': age_from_to[1],
+        'fields': 'bdate, sex, city,'
         # прикрутить статус (в поиске или что там)
         # хотя в задаче нечего не говорится про статус, поэтому оставляю на будущее
     })
@@ -91,8 +95,13 @@ def change_token(vk, new_token):
 
 
 def make_message_about_another_user(user_to_show):
-    return f"{user_to_show['first_name']} {user_to_show['last_name']}\n" \
-           f"https://vk.com/id{user_to_show['id']}"
+    if type(user_to_show) == dict:
+        return f"{user_to_show['first_name']} {user_to_show['last_name']}\n" \
+               f"https://vk.com/id{user_to_show['id']}"
+    else:
+        return f"{user_to_show[1]} {user_to_show[2]}\n" \
+               f"https://vk.com/id{user_to_show[0]}"
+
 
 
 def sort_by_likes(items):
@@ -135,23 +144,40 @@ def create_basic_keyboard():
 
 
 def cache_values(func):
-    cached_data = dict()
+    cached_data = cache_file
     # словарь со списками
+    # TODO: добавить код на случай если 'pointer' выходит за рамки списка
 
-    def new_func(vk_client, user_data, user_id, pointer=0):
+    def new_func(vk_client, user_data, user_id, pointer=''):
 
         records = cached_data.get(user_id)
+        # тут вероятнее всего можно сделать более разумно
+        if func.__name__ == 'get_current':
+            if records:
+                pointer = records[0]-1
+                return func(vk_client, user_data, user_id, records[1][pointer])
+            else:
+                return None
+
         if records:
             pointer = records[0]
-            res = func(vk_client, user_data, user_id, records[1][pointer])
 
         else:
             pointer = 0
             vk_personal = initialize_vk_client(user_data['user_token'])
             candidate_list = search_people(vk_personal, user_data)['items']
 
-            res = func(vk_client, user_data, user_id, candidate_list[pointer])
             cached_data[user_id] = [0, candidate_list]
+            records = cached_data.get(user_id)
+
+        curr_partner = records[1][pointer]
+        # проверка ли есть пользователь в избранном
+        while db_connection.check_if_exist_in_favorite(user_id, curr_partner['id']):
+            # если есть скипаем текущего
+            pointer += 1
+            curr_partner = records[1][pointer]
+
+        res = func(vk_client, user_data, user_id, curr_partner)
 
         cached_data[user_id][0] = pointer + 1
 
@@ -182,3 +208,8 @@ def get_candidate(vk_client, user_data, user_id, candidate_info):
                   # клаву убрал так как нет смысла
                   # 'keyboard': kb_candidate_commands.get_keyboard()
               } if str_attachments else None)
+
+
+@cache_values
+def get_current(vk_client, user_data, user_id, returning_value=''):
+    return returning_value

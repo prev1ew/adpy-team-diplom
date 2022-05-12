@@ -55,21 +55,29 @@ def get_user_data_from_db(user_id: str):
 
 
 def add_to_favorites(user_id: str, partner_data: dict):
+    # внес правки под то, что передаю
     insert_script_favorites = f'''INSERT INTO favorites VALUES(
-    '{partner_data["partner_id"]}',
+    '{partner_data["id"]}',
     '{user_id}'
     )'''
     execute_sql(insert_script_favorites, False)
+    p_age = partner_data.get("age")
+    p_city = partner_data.get("city")
+    if p_city:
+        p_city = p_city['id']
+    else:
+        p_city = 'None'
+
     insert_script_partners = f'''INSERT INTO partners VALUES(
-    '{partner_data["partner_id"]}',
+    '{partner_data["id"]}',
     '{partner_data["first_name"]}',
     '{partner_data["last_name"]}',
-    {partner_data["age"]},
-    '{partner_data["gender"]}',
-    '{partner_data["city"]}',
-    '{partner_data["photo_ref1"]}',
-    '{partner_data["photo_ref2"]}',
-    '{partner_data["photo_ref3"]}'
+    {p_age if p_age else 0},
+    '{partner_data.get("gender")}',
+    '{p_city}',
+    '{partner_data.get("photo_ref1")}',
+    '{partner_data.get("photo_ref2")}',
+    '{partner_data.get("photo_ref3")}'
     )'''
     execute_sql(insert_script_partners, False)
 
@@ -89,3 +97,15 @@ def update_user_token(user_id, new_token):
         WHERE user_id = '{user_id}'
         '''
     execute_sql(sql_script)
+
+
+def check_if_exist_in_favorite(user_id, partner_id):
+    sql_script = f"""SELECT 'its existed!'
+        FROM favorites
+        WHERE favorites.user_id = '{user_id}'
+        and favorites.partner_id = '{partner_id}'
+        """
+    res = execute_sql(sql_script, True)
+    if not res:
+        return False
+    return len(execute_sql(sql_script, True))
