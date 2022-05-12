@@ -1,5 +1,4 @@
 from datetime import date
-from multiprocessing.dummy import dict
 from random import randrange
 import vk_api
 from vk_api.bot_longpoll import VkBotEventType
