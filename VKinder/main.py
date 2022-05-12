@@ -55,8 +55,7 @@ while True:
                 entered_access_token = request.find('access_token')
 
                 if request == "start":
-                    # event.user_id = ид юзера (вк), его можно использовать для поиска
-                    # т.е. если пользователь без токена пишет "старт"
+
                     if user_data['user_token']:
                         vk.write_msg(vk_client, event.user_id, help_message)
                     else:
