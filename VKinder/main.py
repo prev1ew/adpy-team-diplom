@@ -48,6 +48,14 @@ def make_msg_favorites(item_list):
     return returning_value
 
 
+def show_commands(vk_cl, user_id):
+    vk.write_msg(vk_cl, user_id,
+                 "Команды:\n"
+                 "В избранное - добавить в избранное\n"
+                 "Избранное - показать список избранного\n"
+                 "Следующий - показать следующего")
+
+
 while True:
 
     for event in longpoll.listen():
@@ -71,11 +79,12 @@ while True:
                     else:
                         show_authorization_message(vk_client, event.user_id, True)
 
-                elif request == "ищи людей":
+                elif request == "ищи людей" or request[:4] == "след":
 
                     # если был получен ранее нормальный токен
                     if user_data['user_token']:
                         vk.get_candidate(vk_client, user_data, event.user_id)
+                        show_commands(vk_client, event.user_id)
                     else:
                         show_authorization_message(vk_client, event.user_id)
                 elif request == "избранное":
@@ -83,6 +92,7 @@ while True:
                                  make_msg_favorites(
                                      db_connection.display_favorites(event.user_id))
                                  )
+                    show_commands(vk_client, event.user_id)
                 elif entered_access_token >= 0:  # -1 если не найден "аксес_токен"
                     # entered_access_token = позиция начала "аксес_токен"
                     start = entered_access_token + len('access_token=')
@@ -91,7 +101,8 @@ while True:
                     if 82 < len(access_token) < 87:
                         # тут было бы хорошо проверить токен на корректность перед записью
                         db_connection.update_user_token(event.user_id, access_token)
-                        vk.write_msg(vk_client, event.user_id, "Токен успешно сохранён!")
+                        vk.write_msg(vk_client, event.user_id, f"Токен успешно сохранён!\n{help_message}")
+
                     # else:
                     #     vk.write_msg(vk_client, event.user_id, help_message)
                 elif 82 < len(request) < 87:
@@ -100,7 +111,7 @@ while True:
                     access_token = request
                     # тут было бы хорошо проверить токен на корректность перед записью
                     db_connection.update_user_token(event.user_id, access_token)
-                    vk.write_msg(vk_client, event.user_id, "Токен успешно сохранён!")
+                    vk.write_msg(vk_client, event.user_id, f"Токен успешно сохранён!\n{help_message}")
                 # удалить при готовности
                 elif request == 'restart':
                     pass

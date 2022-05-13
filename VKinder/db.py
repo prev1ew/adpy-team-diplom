@@ -13,7 +13,7 @@ def connect_to_db():
     return connection
 
 
-def execute_sql(sql_script: str, returnResults: bool):
+def execute_sql(sql_script: str, returnResults: bool = False):
     connection = connect_to_db()
     try:
         connection.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
@@ -31,14 +31,13 @@ def execute_sql(sql_script: str, returnResults: bool):
 
 def add_new_user_to_db(user_info: dict):
     # поменял user_id на id
-    # добавил из сити выбирать id
-    # потому что иначе ошибка
+    # в сити помещается идентификатор города, а не сам город
     insert_script = f'''INSERT INTO users VALUES(
     '{user_info["id"]}',
     '{user_info["user_token"]}',
     {user_info["age"]},
     '{user_info["gender"]}',
-    '{user_info["city"]['id']}'
+    '{user_info["city"]}'
     )'''
     execute_sql(insert_script, False)
 
@@ -108,4 +107,4 @@ def check_if_exist_in_favorite(user_id, partner_id):
     res = execute_sql(sql_script, True)
     if not res:
         return False
-    return len(execute_sql(sql_script, True))
+    return len(res)

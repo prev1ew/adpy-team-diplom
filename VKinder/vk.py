@@ -8,12 +8,13 @@ import db as db_connection
 
 
 cache_file = dict()
+GROUP_TOKEN = '0958750174482253c31483e132a96c88aa890529dfe797f60e04beb97f8522441c78629e31f280bcd644c'
 
 
 def initialize_vk_client(token=''):
     if not token:
         # group_token
-        token = '0958750174482253c31483e132a96c88aa890529dfe797f60e04beb97f8522441c78629e31f280bcd644c'
+        token = GROUP_TOKEN
     return vk_api.VkApi(token=token)
 
 
@@ -101,7 +102,6 @@ def make_message_about_another_user(user_to_show):
     else:
         return f"{user_to_show[1]} {user_to_show[2]}\n" \
                f"https://vk.com/id{user_to_show[0]}"
-
 
 
 def sort_by_likes(items):
