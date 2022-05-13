@@ -110,7 +110,6 @@ def sort_by_likes(items):
 
 def find_photos(user_id, vk_client):
     try:
-        # TODO: добавить сортировку фоток по лайкам
         photos = vk_client.method('photos.get', {'owner_id': user_id, 'extended': '1', 'album_id': 'profile'})
         max_count = 3
         curr_photo_num = 0
