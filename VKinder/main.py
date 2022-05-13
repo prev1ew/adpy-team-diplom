@@ -1,9 +1,9 @@
-import time
 import vk
 import db as db_connection
 import create_db
 
 APP_ID = '8158966'
+# group token в vk.py
 cache_file = dict()
 # инициализация
 # возможно следует переделать вк в класс
@@ -15,22 +15,10 @@ vk_client = vk.initialize_vk_client()
 # vk_api = vk_client.get_api()
 longpoll = vk.get_longpoll_from_vk(vk_client)
 
-access_token = ''
-user_data = ''
-# присутствует временно
-# удалить сразу после функций записи/чтения токена из бд
-tmp_token = ''
-# ---
-#
-
 # стандартные кнопки для сообщения
 kb_candidate_commands = vk.create_basic_keyboard()
 
 help_message = 'Напишите команду "ищи людей" для начала поиска "кандидатов"'
-
-
-def get_cache_file():
-    return cache_file
 
 
 def show_authorization_message(vk_cl, user_id, start_message=False):
