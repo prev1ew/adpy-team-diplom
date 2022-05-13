@@ -1,80 +1,78 @@
 import time
 import vk
-import listener
-from threading import Thread
+from db import add_new_user_to_db, get_user_data_from_db, add_to_favorites, display_favorites
+from config import group_token
 
-# инициалиция
-vk_client = vk.initialize_vk_client()
+vk_client = vk.initialize_vk_client(group_token)
 longpoll = vk.get_longpoll_from_vk(vk_client)
-
-# это нужно для того чтобы указывать в редирект адресс нужный адресс на котором у нас запущен сервис
-COMPUTER_IP = vk.get_ip()
-PORT = '8008'
-
-# запускаем сервера с целью возможности получения токена от пользователя
-# TODO: доработать механизм обработки токена (в слушателе)
-th = Thread(target=listener.run_listener)
-th.start()
-
-count = 0
-userAuth = False # пользователь пока не авторизован
+count = 0  # СЧЕТЧИК КАНДИДАТОВ
+userAuthorized = False
+firstSearch = True
+help_message = 'Доступные команды:\n \
+               старт - запустить бот / главное меню\n \
+               ищи - найти партнера или показать следующего\n \
+               изб - добавить в избранное\n \
+               все - показать избранное'
 
 while True:
     time.sleep(5)
     for event in longpoll.listen():
 
-        if vk.is_event_equal_new_message(event.type) and event.to_me:
+        if vk.is_event_equal_new_message(event.type):
+            if event.to_me:
 
-            request = event.text.lower()
-            # делаем запрос в БД по event.user_id, на выходе получаем словарь (user_id, user_token, age, gender, city}
-            user_data = get_user_data_from_db(event.user_id)
+                if not userAuthorized:
+                    user_data = get_user_data_from_db(event.user_id)
+                    if user_data:  # ПРОВЕРЯЕМ ЕСТЬ ЛИ ПОЛЬЗОВАТЕЛЬ В БД
+                        userAuthorized = True
 
-            if not userAuth and len(user_data) == 0: # если пользователя в БД нет, получаем его данные из профиля в ВК
-                user_data = vk.get_user_data(vk_client, event.user_id)
-                # запрашиваем в чат-боте токен пользователя (user_token) и добавляем его в словарь user_data
-                vk.write_msg(vk_client, event.user_id, f'Введите свой токен для авторизации в БД')
-                userAuth = True
-                continue
+                request = event.text.lower()
 
-            elif len(request) > 50:  # нужно поменять проверку для подтверждения, что введен именно токен
-                user_data['user_token'] = request  # добавляем введенный токен к данным пользователя
-                # добавляем нового пользователя в БД, на входе словарь (user_id, user_token, gender, city, age)
-                add_new_user_to_db(user_data)
+                if request == "старт" and not userAuthorized:
+                    vk.write_msg(vk_client, event.user_id, "Введите токен")
 
-            else:
-                #user_data = get_user_data_from_db(event.user_id)
-                vk.write_msg(vk_client, event.user_id, f'''
-                Введите команду: ищи людей / следующий / в избранное / показать избранное / пока
-                '''
-                )
+                elif request == "старт" and userAuthorized:
+                    current_user = dict()
+                    vk.write_msg(vk_client, event.user_id, help_message)
 
-                if request == "ищи людей":
-                    partner_data = vk.search_people(user_data)
-                    # выдать partner_data в читаемом формате в чат
-                    message = partner_data['items'][count]['first_name'] \
-                    + partner_data['items'][count]['last_name'] \
-                    + vk.get_user_data(vk_client, partner_data['items'][count]['id']) \
-                    # нужно дописать функцию для выдачи 3-х фото пользователя с наибольшим кол-вом лайков (photos.get)
-                    + vk.get_user_photo(vk_client, partner_data['items'][count]['id'])
-                    vk.write_msg(vk_client, event.user_id, message)
+                elif 82 < len(request) < 87:  # ЕСЛИ ВВЕДЕН ТОКЕН
+                    user_data = vk.get_user_data(vk_client, event.user_id) # ЕСЛИ ПОЛЬЗОВАТЕЛЬ НЕ В БД, ПОЛУЧАЕМ ДАННЫЕ ИЗ ВК
+                    user_data['user_token'] = request
+                    add_new_user_to_db(user_data)
+                    userAuthorized = True
+                    vk.write_msg(vk_client, event.user_id, 'Пользователь/токен успешно сохранён. Введите команду "старт".')
 
-                elif request == "в избранное":
-                    # попросить выбрать СЛЕДУЮЩИЙ / ИЗБРАННОЕ
-                    add_to_favorites(user_id, partner_data['items'][count])
-                    vk.write_msg(vk_client, event.user_id, f"Пользователь {result['items'][count]['id']} добавлен в избранное")
+                elif request == "ищи":  # ПОИСК ПЕРВОГО КАНДИДАТА ИЛИ ПЕРЕЙТИ К СЛЕДУЮЩЕМУ КАНДИДАТУ
+                    vk_personal = vk.initialize_vk_client(user_data['user_token']) # ИНИЦИАЛИЗАЦИЯ ПЕРСОНАЛЬНОГО ТОКЕНА
+                    if firstSearch:
+                        result = vk.search_people(vk_personal, user_data) # users.search работает только с персональным токеном
+                        number_of_partners = len(result['items'])
+                        firstSearch = False
+                    if count < number_of_partners:
+                        current_user = result['items'][count]
+                        message = vk.display_partner_info(current_user)
+                        str_attachments = vk.find_photos(current_user['id'], vk_personal)
+                        vk.write_msg(vk_client, event.user_id, message,{'attachment': str_attachments})
+                        vk.write_msg(vk_client, event.user_id, 'Введите команду "изб" для добавления кандидата в избранное или "ищи" для продолжения поиска.')
+                        count += 1
+                    else:
+                        count = 0
+                        firstSearch = True
+                        vk.write_msg(vk_client, event.user_id, 'Все кандидаты перебраны. Введите команду "старт", чтобы начать поиск заново.')
 
-                elif request == "следующий":
-                    count += 1
+                elif request == "изб" and current_user:  # ДОБАВИТЬ В ИЗБРАННОЕ
+                    user_info = vk.get_user_data(vk_client, current_user['id'])
+                    user_info.update(current_user)
+                    add_to_favorites(event.user_id, user_info, str_attachments)
+                    current_user = dict()
+                    vk.write_msg(vk_client, event.user_id,'Кандидат добавлен в избранное. Введите команду "старт" для возврата в главное меню.')
 
-                elif request == "показать избранное":
-                    message = display_favorites(user_id)
-                    # надо добавить код для обработки message, чтобы инфа красиво выдавалась в чате
-                    vk.write_msg(vk_client, event.user_id, message)
-
-                elif request == "пока":
-                    vk.write_msg(vk_client, event.user_id, f'Выполнение программы закончено')
-                    break
+                elif request == "все":  # ПОКАЗАТЬ ИЗБРАННОЕ
+                    favorites_list = display_favorites(event.user_id)
+                    for item in favorites_list:
+                        message = 'http://vk.com/id' + str(item[0]) + ' ' + item[1] + ' ' + item[2]
+                        vk.write_msg(vk_client, event.user_id, message)
+                    vk.write_msg(vk_client, event.user_id,'Введите команду "старт" для возврата в главное меню.')
 
                 else:
-                    # TODO: написать хелп если некорректный ввод
-                    vk.write_msg(vk_client, event.user_id, "Не поняла вашего ответа...")
+                    vk.write_msg(vk_client, event.user_id, help_message)
