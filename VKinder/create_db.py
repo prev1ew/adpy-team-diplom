@@ -1,15 +1,15 @@
 import psycopg2
 import psycopg2.extras
+from settings import db_settings
 
 
 def recreate_db_if_needed(wipe_tables=False):
-    hostname = 'localhost'
-    database = 'postgres'
-    username = 'postgres'
-    pwd = '123456'
-    port_id = 5432
 
-    with psycopg2.connect(host=hostname, dbname=database, user=username, password=pwd, port=port_id) as connection:
+    with psycopg2.connect(host=db_settings['hostname'],
+                          dbname=db_settings['database'],
+                          user=db_settings['username'],
+                          password=db_settings['pwd'],
+                          port=db_settings['port_id']) as connection:
         with connection.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
 
             if wipe_tables:
