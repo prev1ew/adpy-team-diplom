@@ -45,10 +45,17 @@ def calc_user_age(bdate):
 def get_user_data(vk, user_id):
     res = vk.method('users.get', {'user_ids': user_id, 'fields': 'bdate, city, sex'})
     info = dict()
-    info['gender'] = 'M' if res[0]['sex'] == 2 else 'W'
+    user_gender = res[0].get('sex')
+    if user_gender:
+        info['gender'] = 'M' if res[0]['sex'] == 2 else 'W'
+    else:
+        info['gender'] = 'None'
     # сити - словарь состоящий из id и title
-    info['city'] = res[0]['city']['id']
-    info['age'] = calc_user_age(res[0]['bdate'])
+    user_city = res[0].get('city')
+    info['city'] = user_city['id'] if user_city else 'None'
+
+    user_bdate = res[0].get('bdate')
+    info['age'] = calc_user_age(user_bdate) if user_bdate else 0
     info['id'] = user_id
     info['user_token'] = ''
     # прикрутить статус (в поиске или что там)

@@ -13,17 +13,10 @@ def recreate_db_if_needed(wipe_tables=False):
         with connection.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
 
             if wipe_tables:
-                cursor.execute('DROP TABLE IF EXISTS users')
-                cursor.execute('DROP TABLE IF EXISTS search_results')
-                cursor.execute('DROP TABLE IF EXISTS favorites')
+                cursor.execute('DROP TABLE IF EXISTS users CASCADE')
+                cursor.execute('DROP TABLE IF EXISTS search_results CASCADE')
+                cursor.execute('DROP TABLE IF EXISTS favorites CASCADE')
 
-            # AGE может меняться, и как по мне это не правильно, я считаю что правильнее сохранять "bdate" (birthdate)
-            # Сити - идентификатор или название ? Как по мне - они оба нужны (1 для запросов, 2 чисто для справки)
-
-            # user id... я бы переименовал в просто id по причине того что... ну и так понятно что id юзера
-            # (т.е. я считаю что не нужно уточнять)
-
-            # хотя можно оставить если ты хочешь хранить 2 id (user id and vk id)
             create_script = ''' CREATE TABLE IF NOT EXISTS users(
                                         user_id     varchar(10) PRIMARY KEY,
                                         user_token  varchar(100) NOT NULL,

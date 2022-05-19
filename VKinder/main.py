@@ -9,7 +9,7 @@ cache_file = dict()
 # возможно следует переделать вк в класс
 
 # чекаем бд, если пустая бд - создаем пустые таблицы
-create_db.recreate_db_if_needed()
+create_db.recreate_db_if_needed(True)
 
 vk_client = vk.initialize_vk_client()
 # vk_api = vk_client.get_api()
@@ -66,7 +66,15 @@ while True:
                         vk.write_msg(vk_client, event.user_id, help_message)
                     else:
                         show_authorization_message(vk_client, event.user_id, True)
+                elif request == 'restart':
+                    user_data = vk.get_user_data(vk_client, event.user_id)
+                    db_connection.update_user_info(user_data)
 
+                    vk.write_msg(vk_client, event.user_id, f"Информация перезагружена\n{help_message}")
+                elif user_data['city'] == 'None' or user_data['gender'] == 'None' or user_data['age'] == 0:
+                    vk.write_msg(vk_client, event.user_id, "У тебя профиль не достаточно заполнен.\n"
+                                                           "Проверь пожалуйста свои дату рождения, город, пол "
+                                                           "и напиши команду 'restart'")
                 elif request == "ищи людей" or request[:4] == "след":
 
                     # если был получен ранее нормальный токен
@@ -100,10 +108,6 @@ while True:
                     # тут было бы хорошо проверить токен на корректность перед записью
                     db_connection.update_user_token(event.user_id, access_token)
                     vk.write_msg(vk_client, event.user_id, f"Токен успешно сохранён!\n{help_message}")
-                # удалить при готовности
-                elif request == 'restart':
-                    pass
-                # --- удалить
                 elif request[:5] == 'в изб':
                     current_user = vk.get_current(vk_client, user_data, event.user_id)
                     if current_user:

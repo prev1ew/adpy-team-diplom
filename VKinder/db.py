@@ -108,3 +108,12 @@ def check_if_exist_in_favorite(user_id, partner_id):
     if not res:
         return False
     return len(res)
+
+
+def update_user_info(user_info: dict):
+    sql_script = f'''UPDATE users
+        SET gender = '{user_info['gender']}',
+            city = '{user_info['city']}'
+        WHERE user_id = '{user_info['id']}'
+        '''
+    execute_sql(sql_script)
