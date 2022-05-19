@@ -5,10 +5,10 @@ from vk_api.bot_longpoll import VkBotEventType
 from vk_api.keyboard import VkKeyboardColor, VkKeyboard
 from vk_api.longpoll import VkLongPoll, VkEventType
 import db as db_connection
+from settings import GROUP_TOKEN
 
 
 cache_file = dict()
-GROUP_TOKEN = '0958750174482253c31483e132a96c88aa890529dfe797f60e04beb97f8522441c78629e31f280bcd644c'
 
 
 def initialize_vk_client(token=''):

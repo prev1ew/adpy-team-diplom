@@ -1,15 +1,15 @@
 import vk
 import db as db_connection
 import create_db
+from settings import APP_ID
 
-APP_ID = '8158966'
-# group token в vk.py
+
 cache_file = dict()
 # инициализация
 # возможно следует переделать вк в класс
 
 # чекаем бд, если пустая бд - создаем пустые таблицы
-create_db.recreate_db_if_needed(True)
+create_db.recreate_db_if_needed()
 
 vk_client = vk.initialize_vk_client()
 # vk_api = vk_client.get_api()
