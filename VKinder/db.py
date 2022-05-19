@@ -1,16 +1,15 @@
 import psycopg2
 from psycopg2 import Error
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+from settings import db_settings
 
 
 def connect_to_db():
-    hostname = 'localhost'
-    database = 'postgres'
-    username = 'postgres'
-    pwd = '123456'
-    port_id = 5432
-    connection = psycopg2.connect(host=hostname, dbname=database, user=username, password=pwd, port=port_id)
-    return connection
+    return psycopg2.connect(host=db_settings['hostname'],
+                            dbname=db_settings['database'],
+                            user=db_settings['username'],
+                            password=db_settings['pwd'],
+                            port=db_settings['port_id'])
 
 
 def execute_sql(sql_script: str, returnResults: bool = False):
