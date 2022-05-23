@@ -26,7 +26,6 @@ def recreate_db_if_needed(wipe_tables=False):
                                         ) '''
             cursor.execute(create_script)
 
-            # AGE, city - то же самое что и с таблицей выше
             create_script = ''' CREATE TABLE IF NOT EXISTS partners(
                                         partner_id  varchar(10) PRIMARY KEY,
                                         first_name  varchar(50) NOT NULL,
