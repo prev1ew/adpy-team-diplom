@@ -33,7 +33,7 @@ def make_msg_favorites(item_list):
     returning_value = ''
     for item in item_list:
         returning_value += vk.make_message_about_another_user(item) + '\n'
-    return returning_value
+    return returning_value if returning_value else "Тут пока пусто, но это никогда не поздно исправить)"
 
 
 def show_commands(vk_cl, user_id):
