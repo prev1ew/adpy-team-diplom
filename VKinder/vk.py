@@ -43,7 +43,7 @@ def calc_user_age(bdate):
 
 
 def get_user_data(vk, user_id):
-    res = vk.method('users.get', {'user_ids': user_id, 'fields': 'bdate, city, sex'})
+    res = vk.method('users.get', {'user_ids': user_id, 'fields': 'bdate, city, sex, country'})
     info = dict()
     user_gender = res[0].get('sex')
     if user_gender:
@@ -77,8 +77,12 @@ def select_age(age, gender):
 
 def search_people(vk, info):
     age_from_to = select_age(info['age'], info['gender'])
+    hometown = vk.method('database.getCitiesById', {"city_ids": info['city']})[0]['title']
     res = vk.method('users.search', {
-        'city': info['city'],
+        'city': int(info['city']),
+        # отбора по городу не достаточно чтобы выборка была исключительно из 1 города
+        # поэтому добавил ещё 1 отбор
+        'hometown': hometown,
         # 2 = mens, 1 = women
         'sex': 1 if info['gender'] == 'M' else 2,
         'age_from': age_from_to[0],
@@ -172,9 +176,13 @@ def cache_values(func):
             pointer = 0
             vk_personal = initialize_vk_client(user_data['user_token'])
             candidate_list = search_people(vk_personal, user_data)['items']
-
-            cached_data[user_id] = [0, candidate_list]
-            records = cached_data.get(user_id)
+            if candidate_list:
+                cached_data[user_id] = [0, candidate_list]
+                records = cached_data.get(user_id)
+            else:
+                # никого не нашли
+                res = func(vk_client, user_data, user_id, "404")
+                return res
 
         curr_partner = records[1][pointer]
         # проверка ли есть пользователь в избранном
@@ -194,6 +202,11 @@ def cache_values(func):
 
 @cache_values
 def get_candidate(vk_client, user_data, user_id, candidate_info):
+
+    if candidate_info == '404':
+        write_msg(vk_client, user_id, 'Никого не найдено :(')
+        return
+
     # логика подбора кандидатов находится в декораторе
     vk_personal = initialize_vk_client(user_data['user_token'])
 
